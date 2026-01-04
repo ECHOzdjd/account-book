@@ -9,14 +9,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 流水实体
- * 对应表: tb_transaction
+ * 预算实体
+ * 对应表: tb_budget
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Transaction {
+public class Budget {
 
     /**
      * 主键ID
@@ -29,38 +29,32 @@ public class Transaction {
     private Long userId;
 
     /**
-     * 资产ID
+     * 年月 (如: 2026-01)
      */
-    private Long assetId;
+    private String yearMonth;
 
     /**
-     * 金额
+     * 预算金额
      */
     private BigDecimal amount;
 
     /**
-     * 类型：1-支出，2-收入
-     */
-    private Integer type;
-
-    /**
-     * 分类
+     * 分类（可选，空表示总预算）
      */
     private String category;
 
     /**
-     * 交易时间
+     * 是否AI建议
      */
-    private LocalDateTime transTime;
+    private Boolean aiSuggested;
 
     /**
-     * 详情描述
+     * 创建时间
      */
-    private String description;
+    private LocalDateTime createTime;
 
     /**
-     * 交易类型常量
+     * 更新时间
      */
-    public static final int TYPE_EXPENSE = 1;  // 支出
-    public static final int TYPE_INCOME = 2;   // 收入
+    private LocalDateTime updateTime;
 }

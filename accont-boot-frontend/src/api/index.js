@@ -146,4 +146,41 @@ export const analyze = (data) => {
   return api.post('/ai/analyze', data)
 }
 
+// ============ 预算 API ============
+
+/**
+ * 获取预算执行状态
+ */
+export const getBudgetStatus = (yearMonth) => {
+  return api.get(`/budgets/status/${yearMonth}`)
+}
+
+/**
+ * 获取某月的预算列表
+ */
+export const getBudgets = (yearMonth) => {
+  return api.get(`/budgets/${yearMonth}`)
+}
+
+/**
+ * 设置预算
+ */
+export const setBudget = (data) => {
+  return api.post('/budgets', data)
+}
+
+/**
+ * 获取AI预算建议
+ */
+export const getBudgetSuggestion = (yearMonth) => {
+  return api.get('/budgets/suggestion', { params: { yearMonth } })
+}
+
+/**
+ * 删除预算
+ */
+export const deleteBudget = (id) => {
+  return api.delete(`/budgets/${id}`)
+}
+
 export default api

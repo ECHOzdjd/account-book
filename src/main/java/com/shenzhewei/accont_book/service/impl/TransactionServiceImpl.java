@@ -5,10 +5,11 @@ import com.shenzhewei.accont_book.exception.BizException;
 import com.shenzhewei.accont_book.model.dto.TransactionDTO;
 import com.shenzhewei.accont_book.model.entity.Transaction;
 import com.shenzhewei.accont_book.repository.TransactionMapper;
+import com.shenzhewei.accont_book.service.AIAnalysisService;
 import com.shenzhewei.accont_book.service.AssetService;
 import com.shenzhewei.accont_book.service.TransactionService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +22,24 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionMapper transactionMapper;
     private final AssetService assetService;
+    private final AIAnalysisService aiAnalysisService;
+
+    public TransactionServiceImpl(TransactionMapper transactionMapper, 
+                                   AssetService assetService,
+                                   @Lazy AIAnalysisService aiAnalysisService) {
+        this.transactionMapper = transactionMapper;
+        this.assetService = assetService;
+        this.aiAnalysisService = aiAnalysisService;
+    }
 
     /**
      * 新增记账
      * 核心逻辑：先插入流水记录，再更新资产余额
+     * 如果没有提供分类但有描述，则使用AI自动分析分类
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -43,28 +53,40 @@ public class TransactionServiceImpl implements TransactionService {
         assetService.findById(dto.getAssetId())
                 .orElseThrow(() -> new BizException(ResultCode.NOT_FOUND, "资产账户不存在"));
 
-        // 3. 构建流水实体
+        // 3. AI自动分类：如果没有提供分类但有描述，使用AI分析
+        String category = dto.getCategory();
+        if ((category == null || category.trim().isEmpty()) && dto.getDescription() != null && !dto.getDescription().trim().isEmpty()) {
+            log.info("使用AI自动分类，描述: {}", dto.getDescription());
+            category = aiAnalysisService.analyzeCategory(dto.getDescription(), dto.getType());
+            log.info("AI分类结果: {}", category);
+        } else if (category == null || category.trim().isEmpty()) {
+            // 既没有分类也没有描述，使用默认分类
+            category = dto.getType() == Transaction.TYPE_EXPENSE ? "其他" : "其他收入";
+        }
+
+        // 4. 构建流水实体
         Transaction transaction = Transaction.builder()
                 .userId(dto.getUserId())
                 .assetId(dto.getAssetId())
                 .amount(dto.getAmount())
                 .type(dto.getType())
-                .category(dto.getCategory())
+                .category(category)
+                .description(dto.getDescription())
                 .transTime(dto.getTransTime() != null ? dto.getTransTime() : LocalDateTime.now())
                 .build();
 
-        // 4. 插入流水记录
+        // 5. 插入流水记录
         transactionMapper.insert(transaction);
         log.info("流水记录插入成功: id={}", transaction.getId());
 
-        // 5. 计算余额变动金额
+        // 6. 计算余额变动金额
         BigDecimal balanceChange = calculateBalanceChange(dto.getAmount(), dto.getType());
 
-        // 6. 更新资产余额（使用乐观锁）
+        // 7. 更新资产余额（使用乐观锁）
         assetService.updateBalance(dto.getAssetId(), balanceChange);
 
-        log.info("记账成功: transactionId={}, assetId={}, type={}, amount={}", 
-                transaction.getId(), dto.getAssetId(), dto.getType(), dto.getAmount());
+        log.info("记账成功: transactionId={}, assetId={}, type={}, amount={}, category={}", 
+                transaction.getId(), dto.getAssetId(), dto.getType(), dto.getAmount(), category);
 
         return transaction;
     }

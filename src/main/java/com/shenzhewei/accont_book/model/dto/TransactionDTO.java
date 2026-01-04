@@ -1,7 +1,6 @@
 package com.shenzhewei.accont_book.model.dto;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,13 +44,18 @@ public class TransactionDTO {
     private Integer type;
 
     /**
-     * 分类
+     * 分类（可选，如不提供则由AI根据description自动分析）
      */
-    @NotBlank(message = "分类不能为空")
     private String category;
+
+    /**
+     * 详情描述（AI将根据此内容分析分类）
+     */
+    private String description;
 
     /**
      * 交易时间（不传则使用当前时间）
      */
     private LocalDateTime transTime;
 }
+

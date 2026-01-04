@@ -15,25 +15,25 @@ public interface TransactionMapper {
     /**
      * 根据ID查询流水
      */
-    @Select("SELECT id, user_id, asset_id, amount, type, category, trans_time FROM tb_transaction WHERE id = #{id}")
+    @Select("SELECT id, user_id, asset_id, amount, type, category, description, trans_time FROM tb_transaction WHERE id = #{id}")
     Optional<Transaction> findById(@Param("id") Long id);
 
     /**
      * 根据用户ID查询流水列表
      */
-    @Select("SELECT id, user_id, asset_id, amount, type, category, trans_time FROM tb_transaction WHERE user_id = #{userId} ORDER BY trans_time DESC")
+    @Select("SELECT id, user_id, asset_id, amount, type, category, description, trans_time FROM tb_transaction WHERE user_id = #{userId} ORDER BY trans_time DESC")
     List<Transaction> findByUserId(@Param("userId") Long userId);
 
     /**
      * 根据资产ID查询流水列表
      */
-    @Select("SELECT id, user_id, asset_id, amount, type, category, trans_time FROM tb_transaction WHERE asset_id = #{assetId} ORDER BY trans_time DESC")
+    @Select("SELECT id, user_id, asset_id, amount, type, category, description, trans_time FROM tb_transaction WHERE asset_id = #{assetId} ORDER BY trans_time DESC")
     List<Transaction> findByAssetId(@Param("assetId") Long assetId);
 
     /**
      * 插入流水记录
      */
-    @Insert("INSERT INTO tb_transaction (user_id, asset_id, amount, type, category, trans_time) VALUES (#{userId}, #{assetId}, #{amount}, #{type}, #{category}, #{transTime})")
+    @Insert("INSERT INTO tb_transaction (user_id, asset_id, amount, type, category, description, trans_time) VALUES (#{userId}, #{assetId}, #{amount}, #{type}, #{category}, #{description}, #{transTime})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Transaction transaction);
 
@@ -48,4 +48,12 @@ public interface TransactionMapper {
      */
     @Select("SELECT COUNT(*) FROM tb_transaction WHERE asset_id = #{assetId}")
     int countByAssetId(@Param("assetId") Long assetId);
+
+    /**
+     * 根据用户ID和月份查询流水列表 (用于预算计算)
+     */
+    @Select("SELECT id, user_id, asset_id, amount, type, category, description, trans_time FROM tb_transaction " +
+            "WHERE user_id = #{userId} AND DATE_FORMAT(trans_time, '%Y-%m') = #{yearMonth} ORDER BY trans_time DESC")
+    List<Transaction> findByUserIdAndMonth(@Param("userId") Long userId, @Param("yearMonth") String yearMonth);
 }
+

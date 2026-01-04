@@ -6,17 +6,19 @@ import { getTransactions, getAssets, addTransaction, deleteTransaction } from '@
 const transactions = ref([])
 const assets = ref([])
 const loading = ref(true)
+const submitting = ref(false)
 const dialogVisible = ref(false)
 
 const form = ref({
     assetId: null,
     type: 1,
     category: '',
+    description: '',
     amount: null,
     transTime: new Date()
 })
 
-// 常用分类
+// 常用分类（用于快速选择，可选）
 const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '居住', '通讯', '医疗', '教育', '其他']
 const incomeCategories = ['工资', '奖金', '理财', '红包', '退款', '其他']
 
@@ -69,6 +71,7 @@ const openDialog = () => {
         assetId: assets.value.length > 0 ? assets.value[0].id : null,
         type: 1,
         category: '',
+        description: '',
         amount: null,
         transTime: new Date()
     }
@@ -81,8 +84,9 @@ const submitTransaction = async () => {
         ElMessage.warning('请选择账户')
         return
     }
-    if (!form.value.category) {
-        ElMessage.warning('请选择分类')
+    // 必须有描述或分类其一
+    if (!form.value.description && !form.value.category) {
+        ElMessage.warning('请输入详情描述或选择分类')
         return
     }
     if (!form.value.amount || form.value.amount <= 0) {
@@ -90,19 +94,23 @@ const submitTransaction = async () => {
         return
     }
 
+    submitting.value = true
     try {
         await addTransaction({
             assetId: form.value.assetId,
             type: form.value.type,
-            category: form.value.category,
+            category: form.value.category || undefined,  // 空则由AI分析
+            description: form.value.description || undefined,
             amount: form.value.amount,
             transTime: form.value.transTime
         })
-        ElMessage.success('记账成功')
+        ElMessage.success('记账成功' + (form.value.category ? '' : ' (AI已自动分类)'))
         dialogVisible.value = false
         loadData()
     } catch (e) {
         console.error('记账失败', e)
+    } finally {
+        submitting.value = false
     }
 }
 
@@ -160,12 +168,17 @@ onMounted(loadData)
                             </span>
                         </template>
                     </el-table-column>
-                    <el-table-column prop="category" label="分类" width="120">
+                    <el-table-column prop="category" label="分类" width="100">
                         <template #default="{ row }">
                             <span class="category-text">{{ row.category }}</span>
                         </template>
                     </el-table-column>
-                    <el-table-column label="账户" width="140">
+                    <el-table-column prop="description" label="详情" min-width="150">
+                        <template #default="{ row }">
+                            <span class="description-text">{{ row.description || '-' }}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="账户" width="120">
                         <template #default="{ row }">
                             <div class="account-cell">
                                 <el-icon>
@@ -175,19 +188,19 @@ onMounted(loadData)
                             </div>
                         </template>
                     </el-table-column>
-                    <el-table-column label="金额" width="150">
+                    <el-table-column label="金额" width="130">
                         <template #default="{ row }">
                             <span class="amount" :class="row.type === 1 ? 'expense' : 'income'">
                                 {{ row.type === 1 ? '-' : '+' }}¥{{ formatMoney(row.amount) }}
                             </span>
                         </template>
                     </el-table-column>
-                    <el-table-column label="时间" min-width="180">
+                    <el-table-column label="时间" width="150">
                         <template #default="{ row }">
                             <span class="time-text">{{ formatDate(row.transTime) }}</span>
                         </template>
                     </el-table-column>
-                    <el-table-column label="操作" width="100" fixed="right">
+                    <el-table-column label="操作" width="80" fixed="right">
                         <template #default="{ row }">
                             <el-button type="danger" link @click="handleDelete(row)">
                                 <el-icon>
@@ -201,7 +214,7 @@ onMounted(loadData)
         </div>
 
         <!-- 记账对话框 -->
-        <el-dialog v-model="dialogVisible" title="记一笔" width="450px">
+        <el-dialog v-model="dialogVisible" title="记一笔" width="480px">
             <el-form :model="form" label-width="80px" class="trans-form">
                 <!-- 收支类型 -->
                 <el-form-item label="类型">
@@ -226,14 +239,27 @@ onMounted(loadData)
                     </el-select>
                 </el-form-item>
 
-                <!-- 分类选择 -->
-                <el-form-item label="分类" required>
-                    <div class="category-grid">
-                        <div v-for="cat in currentCategories" :key="cat" class="category-item"
-                            :class="{ active: form.category === cat }" @click="form.category = cat">
-                            {{ cat }}
-                        </div>
+                <!-- 详情描述（AI分类依据） -->
+                <el-form-item label="详情" required>
+                    <el-input 
+                        v-model="form.description" 
+                        type="textarea" 
+                        :rows="2"
+                        placeholder="描述这笔消费，如：星巴克冰美式、打车去公司、淘宝买衣服..."
+                        maxlength="200"
+                        show-word-limit
+                    />
+                    <div class="form-tip">
+                        <el-icon><MagicStick /></el-icon>
+                        AI将根据描述自动分析分类
                     </div>
+                </el-form-item>
+
+                <!-- 分类快速选择（可选） -->
+                <el-form-item label="分类">
+                    <el-select v-model="form.category" placeholder="可选，留空则AI自动分类" style="width: 100%" clearable>
+                        <el-option v-for="cat in currentCategories" :key="cat" :label="cat" :value="cat" />
+                    </el-select>
                 </el-form-item>
 
                 <!-- 金额 -->
@@ -250,7 +276,9 @@ onMounted(loadData)
 
             <template #footer>
                 <el-button @click="dialogVisible = false">取消</el-button>
-                <el-button type="primary" @click="submitTransaction">确认记账</el-button>
+                <el-button type="primary" @click="submitTransaction" :loading="submitting">
+                    {{ submitting ? 'AI分析中...' : '确认记账' }}
+                </el-button>
             </template>
         </el-dialog>
     </div>
@@ -272,6 +300,11 @@ onMounted(loadData)
 
 .category-text {
     font-weight: 500;
+}
+
+.description-text {
+    color: var(--text-secondary);
+    font-size: 13px;
 }
 
 .account-cell {
@@ -311,29 +344,13 @@ onMounted(loadData)
     gap: 6px;
 }
 
-.category-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-
-.category-item {
-    padding: 10px 16px;
-    background: #f1f5f9;
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 14px;
-}
-
-.category-item:hover {
-    background: #e2e8f0;
-}
-
-.category-item.active {
-    background: var(--accent-gold);
-    color: #fff;
+.form-tip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--accent-gold);
 }
 
 /* 表格行样式 */

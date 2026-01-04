@@ -36,11 +36,28 @@ CREATE TABLE tb_transaction (
     amount DECIMAL(15, 2) NOT NULL COMMENT '金额',
     type TINYINT NOT NULL COMMENT '类型: 1-支出, 2-收入',
     category VARCHAR(50) NOT NULL COMMENT '分类',
+    description VARCHAR(500) COMMENT '详情描述',
     trans_time DATETIME NOT NULL COMMENT '交易时间',
     INDEX idx_user_id (user_id),
     INDEX idx_asset_id (asset_id),
     INDEX idx_trans_time (trans_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流水表';
+
+-- 预算表
+DROP TABLE IF EXISTS tb_budget;
+CREATE TABLE tb_budget (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    year_month VARCHAR(7) NOT NULL COMMENT '年月: 2026-01',
+    amount DECIMAL(15, 2) NOT NULL COMMENT '预算金额',
+    category VARCHAR(50) COMMENT '分类（可选，空表示总预算）',
+    ai_suggested BOOLEAN DEFAULT FALSE COMMENT '是否AI建议',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_user_month_category (user_id, year_month, category),
+    INDEX idx_user_id (user_id),
+    INDEX idx_year_month (year_month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预算表';
 
 -- 测试数据
 INSERT INTO sys_user (username, password) VALUES ('admin', '123456');
@@ -50,6 +67,7 @@ INSERT INTO tb_asset (user_id, name, balance, version) VALUES
 (1, '银行卡', 50000.00, 1),
 (1, '支付宝', 2000.00, 1);
 
-INSERT INTO tb_transaction (user_id, asset_id, amount, type, category, trans_time) VALUES
-(1, 1, 100.00, 1, '餐饮', NOW()),
-(1, 2, 5000.00, 2, '工资', NOW());
+INSERT INTO tb_transaction (user_id, asset_id, amount, type, category, description, trans_time) VALUES
+(1, 1, 100.00, 1, '餐饮', '午餐外卖', NOW()),
+(1, 2, 5000.00, 2, '工资', '12月工资', NOW());
+

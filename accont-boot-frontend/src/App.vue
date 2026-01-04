@@ -10,6 +10,7 @@ const menuItems = [
   { path: '/', title: '首页', icon: 'HomeFilled' },
   { path: '/assets', title: '资产管理', icon: 'Wallet' },
   { path: '/transactions', title: '记账流水', icon: 'List' },
+  { path: '/budget', title: '预算管理', icon: 'PieChart' },
   { path: '/ai-analysis', title: 'AI分析', icon: 'DataAnalysis' }
 ]
 

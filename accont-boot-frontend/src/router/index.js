@@ -36,6 +36,12 @@ const routes = [
     name: 'AIAnalysis',
     component: () => import('@/views/AIAnalysis.vue'),
     meta: { title: 'AI分析', icon: 'DataAnalysis', requiresAuth: true }
+  },
+  {
+    path: '/budget',
+    name: 'Budget',
+    component: () => import('@/views/Budget.vue'),
+    meta: { title: '预算管理', icon: 'PieChart', requiresAuth: true }
   }
 ]
 
